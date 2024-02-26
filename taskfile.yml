@@ -1,0 +1,69 @@
+version: '3'
+
+vars:
+  OLLAMA_INSTALL_PATH: "./bin/ollama"
+
+tasks:
+  setup:
+    desc: "Install ollama."
+    status:
+      - test -f {{.OLLAMA_INSTALL_PATH}}
+    cmds:
+      - |
+        mkdir -p bin
+        curl -L https://ollama.ai/download/ollama-linux-amd64 -o {{.OLLAMA_INSTALL_PATH}}
+        chmod +x {{.OLLAMA_INSTALL_PATH}}
+
+  update:
+    desc: "Update ollama."
+    cmds:
+      - |
+        task setup -f
+
+  start:
+    desc: "Start the ollama server"
+    deps: [setup]
+    status:
+      - pgrep -f ollama
+    cmds:
+      - |
+        OLLAMA_HOST=0.0.0.0:11434 {{.OLLAMA_INSTALL_PATH}} serve
+
+  create-model:
+    desc: "Create the specified model"
+    preconditions:
+      - test -f modelfiles/{{.NAME}}
+      - pgrep -f ollama
+    vars:
+      NAME: "{{.NAME}}"
+    cmds:
+      - |
+        {{.OLLAMA_INSTALL_PATH}} create {{.NAME}} -f modelfiles/{{.NAME}}
+
+  download-model-from-library:
+    desc: "Download the specified model from the Ollama library"
+    preconditions:
+      - pgrep -f ollama
+    vars:
+      NAME: "{{.NAME}}"
+    cmds:
+      - |
+        {{.OLLAMA_INSTALL_PATH}} pull {{.NAME}}
+
+  start-model:
+    desc: "Start the specified model"
+    preconditions:
+      - pgrep -f ollama # TODO: How to also check that the model has already been created??
+    vars:
+      NAME: "{{.NAME}}"
+    cmds:
+      - |
+        {{.OLLAMA_INSTALL_PATH}} run {{.NAME}}
+
+  list:
+    desc: "List all locally-installed models"
+    preconditions:
+      - pgrep -f ollama
+    cmds:
+      - |
+        {{.OLLAMA_INSTALL_PATH}} list
